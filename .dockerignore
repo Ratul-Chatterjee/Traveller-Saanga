@@ -1,0 +1,10 @@
+node_modules
+dist
+.vite
+.git
+.env
+*.local
+*.key.json
+service-account*.json
+server/data/user_database.json
+server/node_modules

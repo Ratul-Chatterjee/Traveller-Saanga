@@ -1,0 +1,5 @@
+node_modules
+npm-debug.log
+data/user_database.json
+data/places_cache.json
+.env

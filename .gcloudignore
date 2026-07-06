@@ -1,0 +1,12 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+.vite
+.env
+*.local
+*.key.json
+*.md
+service-account*.json
+server/node_modules
+server/data/user_database.json

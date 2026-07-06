@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+.vite
+*.local
+.DS_Store
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+*.key.json
+service-account*.json
+server/data/user_database.json
+server/data/places_cache.json

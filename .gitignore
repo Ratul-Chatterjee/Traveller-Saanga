@@ -13,4 +13,3 @@ dist-ssr
 *.key.json
 service-account*.json
 server/data/user_database.json
-server/data/places_cache.json

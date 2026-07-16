@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: traveller-saanga
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+    buildEnvVars:
+      - key: VITE_FIREBASE_API_KEY
+        value: AIzaSyARifASpU8SMIVkx7S9GwfPLzNzRXB8iSc
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: maximal-backup-497509-c5.firebaseapp.com
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: maximal-backup-497509-c5
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: maximal-backup-497509-c5.firebasestorage.app
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: 367344494806
+      - key: VITE_FIREBASE_APP_ID
+        value: "1:367344494806:web:8ddbbd8044af7325034177"
+      - key: VITE_FIREBASE_MEASUREMENT_ID
+        value: G-S818EKB8T2
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        value: AIzaSyDCSPb0rTvOiMDc7oSj6ABB1pQsrZb_KDA
+      - key: VITE_API_URL
+        value: ""

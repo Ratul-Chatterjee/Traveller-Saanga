@@ -21,6 +21,9 @@ app.use(express.json());
 
 // ── Serve built frontend ──────────────────────────────────────────────────────
 const distPath = path.resolve(__dirname, "..", "dist");
+
+console.log("📁 Server directory:", __dirname);
+console.log("📁 Dist path:", distPath, "| exists:", fs.existsSync(distPath));
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   // SPA fallback — serve index.html for all non-API routes
@@ -146,19 +149,52 @@ app.get("/api/odisha/check", (req, res) => {
 // 2. TOURIST PLACES SERVICE
 // ══════════════════════════════════════════════════════════════════════════════
 const PLACES_CACHE_FILE = path.join(__dirname, "data", "places_cache.json");
+console.log("📁 Places cache path:", PLACES_CACHE_FILE, "| exists:", fs.existsSync(PLACES_CACHE_FILE));
+
+let cachedPlaces = null;
+
+async function fetchPlacesFromOverpass() {
+  const overpassQuery = `[out:json][timeout:90];area["ISO3166-2"="IN-OR"]->.a;(node["tourism"="attraction"](area.a);node["historic"="monument"](area.a););out body 100;`;
+  const response = await axios.get("https://overpass-api.de/api/interpreter", {
+    params: { data: overpassQuery },
+    headers: { "User-Agent": "TravellerSaanga/1.0" },
+  });
+  const osmNodes = response.data?.elements || [];
+  const cleanedPlaces = osmNodes.filter((n) => n.tags?.name).map((n) => ({
+    id: `osm-${n.id}`, name: n.tags.name, lat: n.lat, lng: n.lon,
+    entryFee: parseInt(n.tags.fee) || 0, duration: n.tags.tourism === "attraction" ? 2.5 : 1.5,
+    type: n.tags.tourism || n.tags.historic || "Attraction", district: n.tags["addr:district"] || "Odisha",
+    region: "Odisha Tourism", rating: 4.0,
+    image: "https://images.unsplash.com/photo-1609947017136-71d36ec90c43?auto=format&fit=crop&w=600&q=80",
+    description: n.tags.description || `Historic ${n.tags.historic || "attraction"} in Odisha.`,
+  }));
+  if (cleanedPlaces.length > 0) await saveCachedPlaces(cleanedPlaces);
+  return cleanedPlaces;
+}
 
 async function loadCachedPlaces() {
+  if (cachedPlaces) return cachedPlaces;
   const bucketName = process.env.GCS_BUCKET_NAME;
   if (storage && bucketName) {
     try {
       const [content] = await storage.bucket(bucketName).file("places_cache.json").download();
-      return JSON.parse(content.toString());
+      cachedPlaces = JSON.parse(content.toString());
+      return cachedPlaces;
     } catch {}
   }
   if (fs.existsSync(PLACES_CACHE_FILE)) {
-    try { return JSON.parse(fs.readFileSync(PLACES_CACHE_FILE, "utf8")); } catch {}
+    try {
+      cachedPlaces = JSON.parse(fs.readFileSync(PLACES_CACHE_FILE, "utf8"));
+      return cachedPlaces;
+    } catch {}
   }
-  throw new Error("No places cache found. Run POST /api/places/refresh first to seed the cache from OpenStreetMap.");
+  console.log("No local places cache found. Fetching from OpenStreetMap Overpass API...");
+  try {
+    cachedPlaces = await fetchPlacesFromOverpass();
+    return cachedPlaces;
+  } catch (err) {
+    throw new Error("No places cache found and Overpass fetch failed: " + err.message);
+  }
 }
 
 async function saveCachedPlaces(places) {
@@ -177,22 +213,9 @@ app.get("/api/places", async (req, res) => {
 
 app.post("/api/places/refresh", async (req, res) => {
   try {
-    const overpassQuery = `[out:json][timeout:90];area["ISO3166-2"="IN-OR"]->.a;(node["tourism"="attraction"](area.a);node["historic"="monument"](area.a););out body 100;`;
-    const response = await axios.get("https://overpass-api.de/api/interpreter", {
-      params: { data: overpassQuery },
-      headers: { "User-Agent": "TravellerSaanga/1.0" },
-    });
-    const osmNodes = response.data?.elements || [];
-    const cleanedPlaces = osmNodes.filter((n) => n.tags?.name).map((n) => ({
-      id: `osm-${n.id}`, name: n.tags.name, lat: n.lat, lng: n.lon,
-      entryFee: parseInt(n.tags.fee) || 0, duration: n.tags.tourism === "attraction" ? 2.5 : 1.5,
-      type: n.tags.tourism || n.tags.historic || "Attraction", district: n.tags["addr:district"] || "Odisha",
-      region: "Odisha Tourism", rating: 4.0,
-      image: "https://images.unsplash.com/photo-1609947017136-71d36ec90c43?auto=format&fit=crop&w=600&q=80",
-      description: n.tags.description || `Historic ${n.tags.historic || "attraction"} in Odisha.`,
-    }));
-    await saveCachedPlaces(cleanedPlaces);
-    res.json({ message: "Places refreshed", count: cleanedPlaces.length });
+    cachedPlaces = null;
+    const places = await fetchPlacesFromOverpass();
+    res.json({ message: "Places refreshed", count: places.length });
   } catch (err) {
     res.status(500).json({ error: "Refresh failed: " + err.message });
   }

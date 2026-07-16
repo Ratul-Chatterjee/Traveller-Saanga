@@ -1,13 +1,12 @@
 services:
   - type: web
     name: traveller-saanga
-    runtime: docker
-    dockerfilePath: Dockerfile
+    runtime: node
     plan: free
+    buildCommand: npm ci && npm run build && cd server && npm ci --only=production
+    startCommand: cd server && node index.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8080"
